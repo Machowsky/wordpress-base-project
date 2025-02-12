@@ -1,0 +1,18 @@
+{
+    "devDependencies": {
+        "subpackage": "^1.1.0"
+    },
+    "subPackages": [
+        "public_html/wp-content/themes/custom-theme"
+    ],
+    "scripts": {
+        "postinstall": "subpkg install",
+        "dev": "subpkg run dev",
+        "development": "subpkg run development",
+        "watch": "subpkg run watch",
+        "prod": "subpkg run prod",
+        "production": "subpkg run production",
+        "critical": "subpkg run critical",
+        "ciritical-dev": "subpkg run critical-dev"
+    }
+}

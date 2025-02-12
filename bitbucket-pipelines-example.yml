@@ -1,0 +1,167 @@
+# If you ever want to push a commit and skip triggering its pipeline, you can add [skip ci] or [ci skip] to the commit message.
+#Set the NPM_TOKEN environment variable (This token can be found in your local ~/.npmrc, after you log in to the registry).
+# -----
+#image: php:7-alpine3.7
+image: debian:buster
+
+pipelines:
+  branches:
+    release/*:
+      - step:
+          name: Get PHP and Composer Install
+          image: php:8.1-alpine
+          caches:
+            - composer
+          script:
+            - apt-get update && apt-get install -y unzip
+            - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+            - COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_NO_INTERACTION=1 composer install --prefer-dist --no-dev --no-suggest --optimize-autoloader --ignore-platform-reqs --no-progress
+            - echo "PHP & Composer install completed!"
+          artifacts:
+            - "**"
+      - step:
+          name: Build and test
+          image: node:12.14
+          caches:
+            - node
+          script:
+            - apt-get update && apt-get install -y python
+            - cd public_html/wp-content/themes/custom-theme
+            - npm i laravel-mix
+            - npm install --unsafe-perm
+            - npm run production
+          artifacts:
+            - "**"
+      - step:
+          trigger: manual
+          name: Deploy to production
+          deployment: production   
+          script:
+            # replace variables
+            - sed 's/__MYSQL_PASSWORD__/'$MYSQL_PASSWORD'/g' < config/wordpress.php.prd > config/wordpress.php
+            - sed -i 's/__REVISION_NUMBER__/'$BITBUCKET_BUILD_NUMBER-$BITBUCKET_COMMIT'/g' config/wordpress.php
+            # No need to deploy node_modules
+            - rm -rf node_modules
+            - rm -rf public_html/wp-content/themes/custom-theme/node_modules
+            # save build into zipfile
+            - apt-get update && apt-get install -y zip
+            - apt-get update && apt-get install -y python
+            - zip -v -r dist-$BITBUCKET_BUILD_NUMBER-$BITBUCKET_COMMIT.zip *
+            - ls -larth
+            - pipe: atlassian/scp-deploy:0.3.4
+              variables:
+                USER: 'host.user.name'
+                SERVER: 'host.adress'
+                REMOTE_PATH: 'domains/upcoming-website.zip'
+                LOCAL_PATH: 'dist-$BITBUCKET_BUILD_NUMBER-$BITBUCKET_COMMIT.zip'
+                EXTRA_ARGS: '-P 26'
+                DEBUG: '<boolean>' # Optional.
+            - pipe: atlassian/ssh-run:0.2.6
+              variables:
+                SSH_USER: 'host.user.name'
+                SERVER: 'host.adress'
+                PORT: '26'
+                COMMAND: >
+                  cd /home/host.user.name/domains/ && 
+                  rm -f deployment.log &&
+                  rm -Rf upcoming-website/* && 
+                  unzip upcoming-website.zip -d upcoming-website/ >> deployment.log && 
+                  rm upcoming-website.zip &&
+                  ln -sf ../../../data/custom-theme/uploads upcoming-website/public_html/wp-content/uploads &&
+                  rm -Rf replaced/replaced-website &&
+                  mv custom-theme.net replaced/replaced-website &&
+                  mv upcoming-website custom-theme.net &&
+                  ln -sf /home/host.user.name/domains/custom-theme.net/public_html /home/km114627/domains/custom-theme.net/private_html
+                MODE: 'command'
+                # DEBUG: 'true' # Optional.
+          artifacts:
+            - "**"
+      - step:
+          name: Merge back into main
+          image: atlassian/default-image:2
+          trigger: manual
+          script:
+            - git fetch origin main
+            - git branch main FETCH_HEAD
+            - git checkout main
+            - git merge --no-commit $BITBUCKET_COMMIT --no-ff
+            - |
+                if [[ `git status --porcelain` ]]; then
+                  git commit --allow-empty --untracked-files=no -m "[skip ci] Auto-merge ${BITBUCKET_BRANCH} into main as part of pipeline #${BITBUCKET_BUILD_NUMBER}, done with love by Bitbucket bot."
+                  git push
+                else
+                  echo "This is a little bit strange, it looks like that this is already merged into main."
+                fi
+      - step:
+          name: Send Email with Globals
+          script:
+          - pipe: atlassian/email-notify:0.4.3
+            variables:
+              USERNAME: '$EMAIL_USER'
+              PASSWORD: '$EMAIL_PASSWORD'
+              FROM: '$EMAIL_USER'
+              TO: '$EMAIL_RECEIVER'
+              HOST: '$EMAIL_HOST'
+              PORT: '587'
+              SUBJECT: 'Bitbuckett globals' # Optional.
+              BODY_PLAIN: ' <ul>
+                              <li>CI: ${CI}</li>
+                              <li>BITBUCKET_BOOKMARK: $BITBUCKET_BOOKMARK </li>
+                              <li>BITBUCKET_BRANCH: $BITBUCKET_BRANCH</li> 
+                              <li>BITBUCKET_BUILD_NUMBER: $BITBUCKET_BUILD_NUMBER </li>
+                              <li>BITBUCKET_CLONE_DIR: $BITBUCKET_CLONE_DIR </li>
+                              <li>BITBUCKET_COMMIT: $BITBUCKET_COMMIT </li>
+                              <li>BITBUCKET_DEPLOYMENT_ENVIRONMENT: $BITBUCKET_DEPLOYMENT_ENVIRONMENT </li>
+                              <li>BITBUCKET_DEPLOYMENT_ENVIRONMENT_UUID: $BITBUCKET_DEPLOYMENT_ENVIRONMENT_UUID </li>
+                              <li>BITBUCKET_EXIT_CODE: $BITBUCKET_EXIT_CODE </li>
+                              <li>BITBUCKET_GIT_SSH_ORIGIN: $BITBUCKET_GIT_SSH_ORIGIN </li>
+                              <li>BITBUCKET_GIT_HTTP_ORIGIN: $BITBUCKET_GIT_HTTP_ORIGIN </li>
+                              <li>BITBUCKET_PARALLEL_STEP: $BITBUCKET_PARALLEL_STEP </li>
+                              <li>BITBUCKET_PARALLEL_STEP_COUNT: $BITBUCKET_PARALLEL_STEP_COUNT </li>
+                              <li>BITBUCKET_PR_DESTINATION_BRANCH: $BITBUCKET_PR_DESTINATION_BRANCH </li>
+                              <li>BITBUCKET_PR_ID: $BITBUCKET_PR_ID </li>
+                              <li>BITBUCKET_PROJECT_KEY: $BITBUCKET_PROJECT_KEY </li>
+                              <li>BITBUCKET_PROJECT_UUID: $BITBUCKET_PROJECT_UUID </li>
+                              <li>BITBUCKET_REPO_FULL_NAME: $BITBUCKET_REPO_FULL_NAME </li>
+                              <li>BITBUCKET_REPO_OWNER: $BITBUCKET_REPO_OWNER </li>
+                              <li>BITBUCKET_REPO_OWNER_UUID: $BITBUCKET_REPO_OWNER_UUID </li>
+                              <li>BITBUCKET_REPO_SLUG: $BITBUCKET_REPO_SLUG </li>
+                              <li>BITBUCKET_REPO_UUID: $BITBUCKET_REPO_UUID</li>
+                              <li>BITBUCKET_STEP_RUN_NUMBER: $BITBUCKET_STEP_RUN_NUMBER</li>
+                              <li>BITBUCKET_STEP_TRIGGERER_UUID: $BITBUCKET_STEP_TRIGGERER_UUID </li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_TAG</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_STEP_TRIGGERER_UUID</li>
+                              <li>BITBUCKET_TAG: $$BITBUCKET_REPO_FULL_NAME</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_GIT_HTTP_ORIGIN</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_PROJECT_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_REPO_IS_PRIVATE</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_WORKSPACE</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_DEPLOYMENT_ENVIRONMENT_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_REPO_OWNER_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_BRANCH</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_REPO_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_PROJECT_KEY</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_DEPLOYMENT_ENVIRONMENT</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_REPO_SLUG</li>
+                              <li>BITBUCKET_TAG: $CI</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_REPO_OWNER</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_STEP_RUN_NUMBER</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_BUILD_NUMBER</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_GIT_SSH_ORIGIN</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_PIPELINE_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_COMMIT</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_CLONE_DIR</li>
+                              <li>BITBUCKET_TAG: $PIPELINES_JWT_TOKEN</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_STEP_UUID</li>
+                              <li>BITBUCKET_TAG: $BITBUCKET_DOCKER_HOST_INTERNAL</li>
+                            </ul>'
+#             #BODY_HTML: 'bb-log-email.html' # Optional.
+#             # ATTACHMENTS: '<string>' # Optional.
+#             DEBUG: 'true' # Optional.
+          artifacts: 
+          - "**"
+  #   feature/*:
+  #     - step:
+  #         image: openjdk:8 # This step uses its own image
+  #         script:
+  #           - echo "This script runs only on commit to branches with names that match the feature/* pattern."

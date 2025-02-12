@@ -1,0 +1,88 @@
+{
+    "authors": [
+        {
+            "name": "machowsky",
+            "email": "machowsky@abc.net",
+            "homepage": "https://www.custom-theme.net",
+            "role": "Designer/Developer"
+        }
+    ],
+    "name": "machowsky/mch",
+    "type": "project",
+    "require": {
+        "johnpbloch/wordpress-core": "6.7.*",
+        "koodimonni-language/nl_nl": "6.7.*",
+        "koodimonni-plugin-language/secure-custom-fields-nl_nl": "*@beta",
+        "wp-cli/wp-cli-bundle": "^2.7",
+        "wpackagist-plugin/add-from-server":"3.4.5",
+        "wpackagist-plugin/advanced-custom-fields":"6.3.12",
+        "wpackagist-plugin/akismet":"5.3.6",
+        "wpackagist-plugin/dark-mode":"4.1.7",
+        "wpackagist-plugin/regenerate-thumbnails":"3.1.6",
+        "wpackagist-plugin/seo-by-rank-math":"1.0.237",
+        "wpackagist-plugin/timber-library":"1.23.1",
+        "wpackagist-plugin/wordpress-seo":"24.4",
+        "wpackagist-plugin/wp-dark-mode":"5.2.5",
+        "wpackagist-plugin/wp-seopress":"8.5.1.1",
+        "markei/filesystemoperations": "^1.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9",
+        "mockery/mockery": "0.7.*",
+        "wpackagist-plugin/debug-bar":"1.1.6",
+        "wpackagist-plugin/debug-bar-console":"0.3.1",
+        "wpackagist-plugin/log-deprecated-notices":"0.4.1",
+        "wpackagist-plugin/log-deprecated-notices-extender":"0.1.2",
+        "wpackagist-plugin/query-monitor":"3.17.2"
+    },
+    "scripts": {
+        "post-install-cmd": ["@wordpress-install"],
+        "post-update-cmd": ["@wordpress-install"],
+        "wordpress-install": ["Markei\\FileSystemOperations\\Composer::run"]
+    },
+    "extra": {
+        "installer-paths": {
+            "public_html/wp-content/plugins/{$name}/": ["type:wordpress-plugin"],
+            "public_html/wp-content/themes/{$name}/": ["type:wordpress-theme"]
+        },
+        "dropin-paths": {
+            "public_html/wp-content/languages/": ["vendor:koodimonni-language"],
+            "public_html/wp-content/languages/plugins/": ["vendor:koodimonni-plugin-language"],
+            "public_html/wp-content/languages/themes/": ["vendor:koodimonni-theme-language"]
+        },
+        "markei-filesystemoperations": [
+            ["mirror", "vendor/johnpbloch/wordpress-core/wp-admin", "public_html/wp-admin", null, {"delete": true}],
+            ["mirror", "vendor/johnpbloch/wordpress-core/wp-includes", "public_html/wp-includes", null, {"delete": true}],
+            ["copy", "vendor/johnpbloch/wordpress-core/index.php", "public_html/index.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-activate.php", "public_html/wp-activate.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-blog-header.php", "public_html/wp-blog-header.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-comments-post.php", "public_html/wp-comments-post.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-cron.php", "public_html/wp-cron.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-links-opml.php", "public_html/wp-links-opml.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-load.php", "public_html/wp-load.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-login.php", "public_html/wp-login.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-mail.php", "public_html/wp-mail.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-settings.php", "public_html/wp-settings.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-signup.php", "public_html/wp-signup.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/wp-trackback.php", "public_html/wp-trackback.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/xmlrpc.php", "public_html/xmlrpc.php", true],
+            ["copy", "vendor/johnpbloch/wordpress-core/license.txt", "public_html/license.txt", true]
+        ]
+    },
+    "repositories" : [
+        {
+            "type" : "composer",
+            "url" : "https://wpackagist.org"
+        },
+        {
+            "type": "composer",
+            "url": "https://wp-languages.github.io"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true,
+            "koodimonni/composer-dropin-installer": true
+        }
+    }
+}

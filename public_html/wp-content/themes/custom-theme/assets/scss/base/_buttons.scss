@@ -1,0 +1,22 @@
+.button {
+	display: inline-block;
+	width: auto;
+	height: 40px;
+	margin-top: 40px;
+	margin-bottom: 80px;
+	padding: 15px 30px;
+	color: $white;
+	background-color: #9B7B2E;
+	border:none;
+	border-radius: 25px;	
+	font-family: $headings-intro-font-family;
+	text-transform: uppercase;
+	text-align: center;		
+	line-height: 15px;
+
+	&:hover {
+		color: $white;
+		background-color: #896A1C;
+		text-decoration: none;
+	}
+}

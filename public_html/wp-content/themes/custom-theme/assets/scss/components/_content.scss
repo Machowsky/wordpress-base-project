@@ -1,0 +1,19 @@
+.bar-section,
+.restaurant-section,
+.contact-section {
+
+	p {
+		margin: 30px 0 40px;
+	}
+}
+
+.menu-download-section {
+	padding-top: 60px;
+	padding-bottom: 60px;
+
+	.menu-download-image {
+		border: 2px solid black;
+		border-radius: 5px;
+		padding: 30px 90px;
+	}
+}
