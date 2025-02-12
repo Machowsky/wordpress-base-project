@@ -5,7 +5,7 @@ This repo contains:
 1. Basic Docker webserver setup containing php, mysql, composer and node
 2. Johnpbloch Wordpress installed with composer install
 3. Config setup for easy deploying to different enviroments
-4. 
+4. Custom theme
 5. Custom plugin fetching api data with cat facts
 6. example bitbucket-pipelines for automated deployment
 
